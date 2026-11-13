@@ -1,45 +1,37 @@
+#include "cli.hpp"
+#include "scheduler.hpp"
 #include "simulator.hpp"
+#include <atomic>
 #include <cstdio>
+#include <thread>
+#include <chrono>
 
 int main() {
-    std::printf("--- Stage 2 smoke test ---\n");
+    std::printf("=====================================================\n");
+    std::printf(" Process State & Management Simulator\n");
+    std::printf(" OS Semester Project - PEF26\n");
+    std::printf("=====================================================\n");
+    std::printf("Type 'help' for commands.\n\n");
 
     ProcessTable table;
-    int p1 = table.create("P1", 1, 5000);
-    int p2 = table.create("P2", 2, 8000);
-    std::printf("Created P1 pid=%d, P2 pid=%d\n", p1, p2);
+    std::atomic<bool> running{true};
 
-    // Legal: READY -> RUNNING
-    bool ok = table.transition(p1, State::RUNNING);
-    std::printf("P1 READY->RUNNING: %s\n", ok ? "OK" : "REJECTED");
+    // Stage 3: scheduler thread is a placeholder that just waits.
+    // Stage 4 replaces this with a real preemptive scheduler.
+    std::thread sched(scheduler_loop, std::ref(table), std::ref(running), 2000);
 
-    // Illegal: RUNNING -> NEW
-    ok = table.transition(p1, State::NEW);
-    std::printf("P1 RUNNING->NEW:   %s (should be REJECTED)\n", ok ? "OK" : "REJECTED");
+    cli_loop(table, running);
 
-    // Legal: RUNNING -> WAITING
-    ok = table.transition(p1, State::WAITING);
-    std::printf("P1 RUNNING->WAITING: %s\n", ok ? "OK" : "REJECTED");
+    running = false;
+    sched.join();
 
-    // Illegal: WAITING -> RUNNING (must pass through READY)
-    ok = table.transition(p1, State::RUNNING);
-    std::printf("P1 WAITING->RUNNING: %s (should be REJECTED)\n", ok ? "OK" : "REJECTED");
-
-    // Legal: WAITING -> READY
-    ok = table.transition(p1, State::READY);
-    std::printf("P1 WAITING->READY:   %s\n", ok ? "OK" : "REJECTED");
-
-    std::printf("\n--- Current table ---\n");
-    for (const auto& p : table.all()) {
-        std::printf("pid=%d %s state=%s history=",
-                    p.pid, p.name.c_str(), state_name(p.state).c_str());
-        for (size_t i = 0; i < p.history.size(); ++i) {
-            std::printf("%s%s", i ? "->" : "", p.history[i].c_str());
-        }
-        std::printf("\n");
-    }
-    std::printf("\ncreated=%d terminated=%d context_switches=%d\n",
-                table.created_count(), table.terminated_count(),
-                table.context_switches());
+    // Summary on quit.
+    std::printf("\n=====================================================\n");
+    std::printf(" Simulation Summary\n");
+    std::printf("=====================================================\n");
+    std::printf(" Processes created     : %d\n", table.created_count());
+    std::printf(" Terminated normally   : %d\n", table.terminated_count());
+    std::printf(" Total context switches: %d\n", table.context_switches());
+    std::printf("=====================================================\n");
     return 0;
 }
