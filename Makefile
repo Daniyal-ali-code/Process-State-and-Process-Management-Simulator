@@ -1,7 +1,7 @@
 CXX      = g++
 CXXFLAGS = -std=c++20 -Wall -Wextra -pthread -O2 -Iinclude
 TARGET   = simulator
-SRC      = src/main.cpp src/pcb.cpp src/scheduler.cpp src/cli.cpp
+SRC      = src/main.cpp src/pcb.cpp src/simulator.cpp src/scheduler.cpp src/cli.cpp
 OBJ      = $(SRC:.cpp=.o)
 
 $(TARGET): $(OBJ)
