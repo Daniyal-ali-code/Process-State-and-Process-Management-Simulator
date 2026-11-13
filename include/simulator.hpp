@@ -12,6 +12,10 @@ public:
     std::optional<PCB> get(int pid) const;
     void terminate_all();
 
+    // Scheduler helpers.
+    void set_remaining(int pid, int remaining_ms);
+    void mark_finished(int pid);
+
     int  created_count() const;
     int  terminated_count() const;
     int  killed_count() const;

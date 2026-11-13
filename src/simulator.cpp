@@ -63,3 +63,18 @@ int ProcessTable::terminated_count()    const { std::lock_guard<std::mutex> l(mt
 int ProcessTable::killed_count()        const { std::lock_guard<std::mutex> l(mtx_); return killed_count_; }
 int ProcessTable::context_switches()    const { std::lock_guard<std::mutex> l(mtx_); return context_switches_; }
 void ProcessTable::inc_context_switches()      { std::lock_guard<std::mutex> l(mtx_); ++context_switches_; }
+
+void ProcessTable::set_remaining(int pid, int remaining_ms) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    for (auto& p : processes_) {
+        if (p.pid == pid) { p.remaining_ms = remaining_ms; return; }
+    }
+}
+
+void ProcessTable::mark_finished(int pid) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    static long counter = 0;
+    for (auto& p : processes_) {
+        if (p.pid == pid) { p.finished_at = ++counter; return; }
+    }
+}
