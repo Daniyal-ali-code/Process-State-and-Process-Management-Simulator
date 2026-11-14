@@ -3,9 +3,7 @@
 #include "simulator.hpp"
 #include <atomic>
 #include <cstdio>
-#include <functional>
 #include <thread>
-#include <vector>
 
 int main() {
     std::printf("=====================================================\n");
@@ -25,28 +23,32 @@ int main() {
     running = false;
     sched.join();
 
-    // Summary on quit — computed from the final process table.
     auto rows = table.all();
-    long total_turnaround = 0;
-    long total_waited = 0;
-    int  completed = 0;
-    int  killed = 0;
+    long total_wait = 0, total_turnaround = 0;
+    int completed = 0, killed = 0, with_metrics = 0;
     for (const auto& p : rows) {
-        if (p.state == State::TERMINATED) {
-            if (p.remaining_ms > 0) ++killed;   // terminated before finishing
-            else { ++completed; }
-            total_waited += p.waited_ms;
+        if (p.state != State::TERMINATED) continue;
+        total_wait += p.waited_ms;
+        if (p.remaining_ms > 0) { ++killed; }
+        else                   { ++completed; }
+        if (p.finished_at > 0 && p.created_at > 0 && p.created_at <= p.finished_at) {
+            total_turnaround += (p.finished_at - p.created_at);
+            ++with_metrics;
         }
     }
-    double avg_waited = rows.empty() ? 0.0 : double(total_waited) / rows.size();
+    double avg_wait = with_metrics ? double(total_wait) / with_metrics : 0.0;
+    double avg_turnaround = with_metrics ? double(total_turnaround) / with_metrics : 0.0;
 
     std::printf("\n=====================================================\n");
     std::printf(" Simulation Summary\n");
     std::printf("=====================================================\n");
     std::printf(" Processes created     : %d\n", table.created_count());
     std::printf(" Terminated            : %d\n", table.terminated_count());
+    std::printf(" Completed (full burst): %d\n", completed);
+    std::printf(" Killed before finish  : %d\n", killed);
     std::printf(" Total context switches: %d\n", table.context_switches());
-    std::printf(" Average wait          : %.0f ms\n", avg_waited);
+    std::printf(" Average wait          : %.0f ms\n", avg_wait);
+    std::printf(" Average turnaround    : %.0f ms\n", avg_turnaround);
     std::printf("=====================================================\n");
     return 0;
 }
