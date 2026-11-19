@@ -33,7 +33,7 @@ std::optional<PCB> pick_next_ready(const ProcessTable& table) {
 void scheduler_loop(ProcessTable& table,
                     std::atomic<bool>& running,
                     int quantum_ms) {
-    std::printf("[SCHED] Scheduler started (time quantum = %d ms)\n", quantum_ms);
+    std::printf("\n[SCHED] Scheduler started (time quantum = %d ms)\n", quantum_ms);
 
     while (running) {
         auto next = pick_next_ready(table);
@@ -47,7 +47,7 @@ void scheduler_loop(ProcessTable& table,
         if (!table.transition(next->pid, State::RUNNING)) {
             continue;
         }
-        std::printf("[SCHED]   Dispatching %s (pid=%d): READY -> RUNNING\n",
+        std::printf("\n[SCHED]   Dispatching %s (pid=%d): READY -> RUNNING\n",
                     next->name.c_str(), next->pid);
 
         int slice = std::min(quantum_ms, next->remaining_ms);
@@ -60,19 +60,28 @@ void scheduler_loop(ProcessTable& table,
         auto cur = table.get(next->pid);
         if (!cur) continue;
 
+        // Re-check: the CLI may have killed the process during our sleep.
+        if (cur->state != State::RUNNING) {
+            continue;    // someone else moved it; stay silent
+        }
+
         int new_remaining = std::max(0, cur->remaining_ms - elapsed_ms);
         table.set_remaining(next->pid, new_remaining);
 
         if (new_remaining <= 0) {
-            table.transition(next->pid, State::TERMINATED);
-            table.mark_finished(next->pid);
-            std::printf("[DONE]    %s (pid=%d) finished execution: RUNNING -> TERMINATED\n",
-                        next->name.c_str(), next->pid);
+            if (table.transition(next->pid, State::TERMINATED)) {
+                table.mark_finished(next->pid);
+                std::printf("\n[DONE]    %s (pid=%d) finished execution: RUNNING -> TERMINATED\n",
+                            next->name.c_str(), next->pid);
+            }
         } else {
-            table.transition(next->pid, State::READY);
-            std::printf("[QUANTUM] %s (pid=%d) used %dms (remain=%dms) -> preempted: RUNNING -> READY\n",
-                        next->name.c_str(), next->pid, elapsed_ms, new_remaining);
+            if (table.transition(next->pid, State::READY)) {
+                std::printf("\n[QUANTUM] %s (pid=%d) used %dms (remain=%dms) -> preempted: RUNNING -> READY\n",
+                            next->name.c_str(), next->pid, elapsed_ms, new_remaining);
+            }
+            // if transition returned false, the CLI changed the state while we
+            // were sleeping (e.g. kill) — silent is correct
         }
     }
-    std::printf("[SCHED] Scheduler stopped.\n");
+    std::printf("\n[SCHED] Scheduler stopped.\n");
 }
