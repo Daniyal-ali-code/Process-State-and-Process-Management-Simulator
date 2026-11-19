@@ -2,7 +2,6 @@
 #include <cstdio>
 #include <iostream>
 #include <sstream>
-#include <iomanip>
 #include <string>
 #include <algorithm>
 
@@ -11,10 +10,9 @@ namespace {
 void print_help() {
     std::printf(
         "\nCommands:\n"
-        "  create <name> <priority> <burst_ms> [io_at_ms io_duration_ms]\n"
-        "                                       create a process (NEW -> READY)\n"
+        "  create <name> <priority> <burst_ms>   create a process (NEW -> READY)\n"
         "  ps                                   list all processes\n"
-        "  block <pid>                          RUNNING -> WAITING (manual I/O)\n"
+        "  block <pid>                          RUNNING -> WAITING (simulated I/O)\n"
         "  wakeup <pid>                         WAITING -> READY (I/O complete)\n"
         "  kill <pid>                           terminate a process\n"
         "  help                                 show this message\n"
@@ -65,14 +63,11 @@ void print_legal_hint(State from) {
     std::printf("        Legal from %s:", state_name(from).c_str());
     static const State all[] = { State::NEW, State::READY, State::RUNNING,
                                  State::WAITING, State::TERMINATED };
-    bool any = false;
     for (State to : all) {
         if (legal_transition(from, to)) {
             std::printf(" %s", state_name(to).c_str());
-            any = true;
         }
     }
-    if (!any) std::printf(" (none)");
     std::printf("\n");
 }
 
@@ -80,36 +75,21 @@ void cmd_create(ProcessTable& table, std::istringstream& in) {
     std::string name;
     int prio = 0, burst = 0;
     if (!(in >> name >> prio >> burst)) {
-        std::printf("[ERROR] usage: create <name> <priority> <burst_ms> "
-                    "[io_at_ms io_duration_ms]\n");
+        std::printf("[ERROR] usage: create <name> <priority> <burst_ms>\n");
         return;
     }
     if (prio < 0 || burst <= 0) {
         std::printf("[ERROR] priority must be >= 0 and burst must be > 0\n");
         return;
     }
-    int io_at = -1, io_dur = 0;
-    if (in >> io_at) {
-        if (!(in >> io_dur) || io_at < 0 || io_dur <= 0) {
-            std::printf("[ERROR] I/O args must be <io_at_ms >= 0> <io_duration_ms > 0>\n");
-            return;
-        }
-    }
-    int pid = table.create(name, prio, burst, io_at, io_dur);
-    if (io_at >= 0)
-        std::printf("[CREATE] Process %s (pid=%d) created: NEW -> READY | priority=%d burst=%dms io@%dms for %dms\n",
-                    name.c_str(), pid, prio, burst, io_at, io_dur);
-    else
-        std::printf("[CREATE] Process %s (pid=%d) created: NEW -> READY | priority=%d burst=%dms\n",
-                    name.c_str(), pid, prio, burst);
+    int pid = table.create(name, prio, burst);
+    std::printf("[CREATE] Process %s (pid=%d) created: NEW -> READY | priority=%d burst=%dms\n",
+                name.c_str(), pid, prio, burst);
 }
 
 void cmd_block(ProcessTable& table, std::istringstream& in) {
     std::string tok;
-    if (!(in >> tok)) {
-        std::printf("[ERROR] usage: block <pid>\n");
-        return;
-    }
+    if (!(in >> tok)) { std::printf("[ERROR] usage: block <pid>\n"); return; }
     int pid = parse_pid(tok);
     if (pid < 0) { std::printf("[ERROR] invalid pid '%s'\n", tok.c_str()); return; }
 

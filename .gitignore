@@ -1,2 +1,4 @@
-*.o
 simulator
+*.o
+build/
+*.log

@@ -4,20 +4,24 @@
 #include <mutex>
 #include <optional>
 
+// Milliseconds since the simulator started. Used everywhere for timing.
+long now_ms();
+
 class ProcessTable {
 public:
-    int create(const std::string& name, int priority, int burst_ms,
-               int io_at_ms = -1, int io_duration_ms = 0);
+    int create(const std::string& name, int priority, int burst_ms);
     bool transition(int pid, State to);
     std::vector<PCB> all() const;
     std::optional<PCB> get(int pid) const;
     void terminate_all();
 
+    // Scheduler helpers.
     void set_remaining(int pid, int remaining_ms);
     void mark_finished(int pid);
-    void add_wait(int pid, long ms);
-    void stamp_finished(int pid, long now);
-    void set_io_done(int pid);
+
+    // Wait-time accounting.
+    void note_entered_ready(int pid);
+    void add_wait_until_now(int pid);
 
     int  created_count() const;
     int  terminated_count() const;

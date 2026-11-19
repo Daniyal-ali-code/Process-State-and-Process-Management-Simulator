@@ -3,6 +3,7 @@
 #include "simulator.hpp"
 #include <atomic>
 #include <cstdio>
+#include <functional>
 #include <thread>
 
 int main() {
@@ -25,19 +26,17 @@ int main() {
 
     auto rows = table.all();
     long total_wait = 0, total_turnaround = 0;
-    int completed = 0, killed = 0, with_metrics = 0;
+    int  completed = 0, killed = 0;
     for (const auto& p : rows) {
-        if (p.state != State::TERMINATED) continue;
-        total_wait += p.waited_ms;
-        if (p.remaining_ms > 0) { ++killed; }
-        else                   { ++completed; }
-        if (p.finished_at > 0 && p.created_at > 0 && p.created_at <= p.finished_at) {
-            total_turnaround += (p.finished_at - p.created_at);
-            ++with_metrics;
+        if (p.state == State::TERMINATED) {
+            if (p.remaining_ms > 0) ++killed;
+            else                   ++completed;
+            total_wait       += p.waited_ms;
+            if (p.finished_at > 0) total_turnaround += (p.finished_at - p.created_at);
         }
     }
-    double avg_wait = with_metrics ? double(total_wait) / with_metrics : 0.0;
-    double avg_turnaround = with_metrics ? double(total_turnaround) / with_metrics : 0.0;
+    double avg_wait       = rows.empty() ? 0.0 : double(total_wait) / rows.size();
+    double avg_turnaround = completed == 0 ? 0.0 : double(total_turnaround) / completed;
 
     std::printf("\n=====================================================\n");
     std::printf(" Simulation Summary\n");

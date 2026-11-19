@@ -31,9 +31,8 @@ bool legal_transition(State from, State to) {
     return T.count(pack(from, to)) > 0;
 }
 
-PCB::PCB(int p, std::string n, int prio, int burst, int io_at, int io_dur)
+PCB::PCB(int p, std::string n, int prio, int burst)
     : pid(p), name(std::move(n)), state(State::NEW),
-      priority(prio), burst_ms(burst), remaining_ms(burst),
-      io_at_ms(io_at), io_duration_ms(io_dur) {
+      priority(prio), burst_ms(burst), remaining_ms(burst) {
     history.push_back("NEW");
 }
