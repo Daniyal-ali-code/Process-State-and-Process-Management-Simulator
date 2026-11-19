@@ -13,6 +13,7 @@ void print_help() {
         "  create <name> <priority> <burst_ms>   create a process (NEW -> READY)\n"
         "  ps                                   list all processes\n"
         "  block <pid>                          RUNNING -> WAITING (simulated I/O)\n"
+        "  block-next                           block whichever process is RUNNING\n"
         "  wakeup <pid>                         WAITING -> READY (I/O complete)\n"
         "  kill <pid>                           terminate a process\n"
         "  help                                 show this message\n"
@@ -106,6 +107,19 @@ void cmd_block(ProcessTable& table, std::istringstream& in) {
                 p->name.c_str(), pid);
 }
 
+void cmd_block_next(ProcessTable& table) {
+    int pid = table.running_pid();
+    if (pid < 0) {
+        std::printf("[ERROR] no process is currently RUNNING; try again in a moment\n");
+        return;
+    }
+    auto p = table.get(pid);
+    if (!p) return;
+    table.transition(pid, State::WAITING);
+    std::printf("[BLOCK] Process %s (pid=%d): RUNNING -> WAITING (simulated I/O)\n",
+                p->name.c_str(), pid);
+}
+
 void cmd_wakeup(ProcessTable& table, std::istringstream& in) {
     std::string tok;
     if (!(in >> tok)) { std::printf("[ERROR] usage: wakeup <pid>\n"); return; }
@@ -160,13 +174,14 @@ void cli_loop(ProcessTable& table, std::atomic<bool>& running) {
         std::string cmd;
         in >> cmd;
 
-        if (cmd == "help")        { print_help(); }
-        else if (cmd == "create") { cmd_create(table, in); }
-        else if (cmd == "ps")     { print_table(table); }
-        else if (cmd == "block")  { cmd_block(table, in); }
-        else if (cmd == "wakeup") { cmd_wakeup(table, in); }
-        else if (cmd == "kill")   { cmd_kill(table, in); }
-        else if (cmd == "quit")   { running = false; }
+        if (cmd == "help")            { print_help(); }
+        else if (cmd == "create")     { cmd_create(table, in); }
+        else if (cmd == "ps")         { print_table(table); }
+        else if (cmd == "block")      { cmd_block(table, in); }
+        else if (cmd == "block-next") { cmd_block_next(table); }
+        else if (cmd == "wakeup")     { cmd_wakeup(table, in); }
+        else if (cmd == "kill")       { cmd_kill(table, in); }
+        else if (cmd == "quit")       { running = false; }
         else {
             std::printf("[ERROR] unknown command '%s' (try 'help')\n", cmd.c_str());
         }

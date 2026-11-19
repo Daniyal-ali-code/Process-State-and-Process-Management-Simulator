@@ -102,3 +102,11 @@ int ProcessTable::terminated_count() const { std::lock_guard<std::mutex> l(mtx_)
 int ProcessTable::killed_count()     const { std::lock_guard<std::mutex> l(mtx_); return killed_count_; }
 int ProcessTable::context_switches() const { std::lock_guard<std::mutex> l(mtx_); return context_switches_; }
 void ProcessTable::inc_context_switches()   { std::lock_guard<std::mutex> l(mtx_); ++context_switches_; }
+
+int ProcessTable::running_pid() const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    for (const auto& p : processes_) {
+        if (p.state == State::RUNNING) return p.pid;
+    }
+    return -1;
+}

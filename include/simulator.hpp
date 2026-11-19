@@ -19,6 +19,9 @@ public:
     void set_remaining(int pid, int remaining_ms);
     void mark_finished(int pid);
 
+    // Return the pid of the currently RUNNING process, or -1 if none.
+    int running_pid() const;
+
     // Wait-time accounting.
     void note_entered_ready(int pid);
     void add_wait_until_now(int pid);
